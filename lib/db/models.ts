@@ -4,7 +4,8 @@
  * 📦 Repository: Saves info about the code repositories we analyze.
  * 📄 Node: Saves info about individual files in a repository.
  * 🔗 Edge: Saves connections (how files import/export each other).
- * 🚀 Uses strict types and keeps hot-reloading safe.
+ * � Issue: Saves bad code smells and bugs we find during analysis.
+ * �🚀 Uses strict types and keeps hot-reloading safe.
  */
 
 import mongoose, { Schema, Document, Model } from "mongoose";
@@ -14,6 +15,13 @@ export interface IRepository extends Document {
   repoId: string;
   status: "pending" | "analyzing" | "completed" | "failed";
   analyzedAt?: Date;
+  infrastructure?: {
+    auth: string[];
+    database: string[];
+    styling: string[];
+    frameworks: string[];
+    tools: string[];
+  };
 }
 
 const repositorySchema = new Schema<IRepository>(
@@ -25,6 +33,13 @@ const repositorySchema = new Schema<IRepository>(
       default: "pending",
     },
     analyzedAt: { type: Date },
+    infrastructure: {
+      auth: [String],
+      database: [String],
+      styling: [String],
+      frameworks: [String],
+      tools: [String],
+    },
   },
   { timestamps: true },
 );
@@ -65,6 +80,25 @@ const edgeSchema = new Schema<IEdge>(
   { timestamps: true },
 );
 
+// � Issue (Code Smells & Bugs) Types & Schema
+export interface IIssue extends Document {
+  repoId: string;
+  filePath: string;
+  issueType: string;
+  message: string;
+  severity: "low" | "medium" | "high";
+  lineNumber?: number;
+}
+
+const issueSchema = new mongoose.Schema<IIssue>({
+  repoId: String,
+  filePath: String,
+  issueType: String,
+  message: String,
+  severity: String,
+  lineNumber: Number,
+});
+
 // 🚀 Export Models (Conditionally compiled for Next.js hot-reloads to prevent OverwriteModelError)
 
 export const Repository: Model<IRepository> =
@@ -76,3 +110,6 @@ export const Node: Model<INode> =
 
 export const Edge: Model<IEdge> =
   mongoose.models.Edge || mongoose.model<IEdge>("Edge", edgeSchema);
+
+export const Issue =
+  mongoose.models.Issue || mongoose.model("Issue", issueSchema);

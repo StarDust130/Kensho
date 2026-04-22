@@ -44,29 +44,32 @@ export async function fetchRepoFiles(repoUrl: string): Promise<RepoFile[]> {
   // 🧹 Clean up the repo name in case it ends with .git
   const repo = match[2].replace(".git", "");
 
-  let treeData;
-  let branchUsed = "main"; // 🌿 We start by guessing the branch is 'main'
+  // 2️⃣ Ask GitHub what the actual default branch is!
+  const repoInfoRes = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}`,
+    {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json", // 🔑 Passing our secret key
+      },
+    },
+  );
 
-  // 2️⃣ Try to get the file list (tree) from the 'main' branch first
-  try {
-    treeData = await getTree(owner, repo, "main");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
-    console.log("⚠️ Failed to fetch 'main' branch. Trying 'master' branch...");
-    // 🔄 Fallback to 'master' if 'main' fails!
-    try {
-      treeData = await getTree(owner, repo, "master");
-      branchUsed = "master"; // Update the branch we are actually using
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_masterError) {
-      // 💥 Crash if both branches totally failed
-      throw new Error(
-        `🚨 Failed to fetch tree from both main and master branches!`,
-      );
-    }
+  // ❌ Crash accurately if the repo is hidden or missing
+  if (!repoInfoRes.ok) {
+    throw new Error(
+      "🚨 Repository not found. It either does not exist, or it is PRIVATE and your GITHUB_TOKEN lacks full repo scope.",
+    );
   }
 
-  // 3️⃣ Filter the files we actually want to read
+  const repoData = await repoInfoRes.json();
+  const defaultBranch = repoData.default_branch;
+  const branchUsed = defaultBranch; // 🌿 Map it for our raw downloader later
+
+  // 🌳 3️⃣ Now fetch the entire tree securely applying that exact branch
+  const treeData = await getTree(owner, repo, defaultBranch);
+
+  // 4️⃣ Filter the files we actually want to read
   const validExtensions = [".ts", ".tsx", ".js", ".jsx"];
   const badFolders = ["node_modules", "dist", ".next", "build"];
 
@@ -142,7 +145,7 @@ async function getTree(owner: string, repo: string, branch: string) {
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${GITHUB_TOKEN}`, // 🔑 Passing our secret key
-      Accept: "application/vnd.github.v3+json",
+      Accept: "application/vnd.github+json",
     },
   });
 

@@ -131,58 +131,36 @@ export async function buildGraph(
     }
 
     // 🔄 Now process all imports and requires
-    for (const importPath of rawImports) {
-      // 🛑 Ignore external imports (like 'react' or 'next')
-      // Internal imports always start with '.' or '..' Wait, sometimes they start with '/'
-      // We will only trace relative internal imports.
-      if (!importPath.startsWith(".")) {
+    for (const moduleSpecifier of rawImports) {
+      let cleanPath = moduleSpecifier;
+
+      // 🧹 Resolve aliases and clean up
+      if (cleanPath.startsWith("@/")) {
+        cleanPath = cleanPath.replace("@/", "");
+      }
+      if (cleanPath.startsWith("src/")) {
+        cleanPath = cleanPath.replace("src/", "");
+      }
+
+      // 🛠️ Also strip basic relative paths so fuzzy matching doesn't fail
+      cleanPath = cleanPath.replace(/^(\.\/|\.\.\/)+/, "");
+
+      // 🛑 External imports generally don't include slashes! Skip them.
+      if (!moduleSpecifier.startsWith(".") && !moduleSpecifier.includes("/")) {
         continue;
       }
 
-      // 🗺️ Figure out what folder we are in right now
-      // We use posix so it works exactly the same on Windows & Mac
-      const currentDir = path.posix.dirname(filePath);
+      // 🎯 Fuzzy match: check if any node's filePath includes the cleanPath! Do not enforce exact string match.
+      const targetNode = nodes.find((node) =>
+        node.filePath.includes(cleanPath),
+      );
 
-      // 📍 Connect the folder with the relative import to get the absolute fake path
-      const rawTarget = path.posix.join(currentDir, importPath);
-
-      // 🎯 Now we must figure out the exact file it meant (it might hide the .ts extension!)
-      let resolvedTarget = "";
-
-      // 🔍 Check all possible extensions
-      const possibleExtensions = [
-        ".ts",
-        ".tsx",
-        ".js",
-        ".jsx",
-        "/index.ts",
-        "/index.tsx",
-        "/index.js",
-        "/index.jsx",
-      ];
-
-      // ✅ Did they include an extension?
-      if (fileMap.has(rawTarget)) {
-        resolvedTarget = rawTarget;
-      } else {
-        // 🕵️ Try adding standard extensions to see if we have that file!
-        for (const ext of possibleExtensions) {
-          if (fileMap.has(rawTarget + ext)) {
-            resolvedTarget = rawTarget + ext;
-            break;
-          }
-        }
-      }
-
-      // 🔗 If we successfully found the local file, hook them together!
-      if (resolvedTarget) {
-        const originalTarget =
-          fileMap.get(resolvedTarget) || resolvedTarget.replace(/^\//, "");
-
+      // 🔗 If we successfully found the fuzzy matched local file, hook them together!
+      if (targetNode) {
         edges.push({
           repoId,
           source: originalPath,
-          target: originalTarget,
+          target: targetNode.filePath,
         });
       }
     }

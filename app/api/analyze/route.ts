@@ -9,10 +9,11 @@
 
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
-import { Repository, Node, Edge } from "@/lib/db/models";
+import { Repository, Node, Edge, Issue } from "@/lib/db/models";
 import { fetchRepoFiles } from "@/lib/github/fetcher";
 import { buildGraph } from "@/lib/parser/ast";
 import { runStaticAnalysis } from "@/lib/analyzer/rules";
+import { extractTechStack } from "@/lib/ai/techstack";
 
 /**
  * 🚀 Handle POST requests to /api/analyze
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       // 📥 Grab all the saved Nodes (files) and Edges (imports)
       const nodes = await Node.find({ repoId }).lean();
       const edges = await Edge.find({ repoId }).lean();
+      const issues = await Issue.find({ repoId }).lean();
 
       // 🎉 Return the cached data instantly!
       return NextResponse.json(
@@ -68,8 +70,11 @@ export async function POST(request: Request) {
           repoId,
           nodes,
           edges,
-          // 🛑 We don't save issues to DB right now, so we return an empty list when cached
-          issues: [],
+          // 🧱 Retrieve the cached AI tech stack infrastructure
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          infrastructure: (existingRepo as any).infrastructure || {},
+          // 🚩 Return the cached bugs!
+          issues,
         },
         { status: 200 },
       );
@@ -79,12 +84,15 @@ export async function POST(request: Request) {
     await Repository.findOneAndUpdate(
       { repoId },
       { status: "analyzing" },
-      { upsert: true, new: true }, // 🆕 Create it if it doesn't exist yet!
+      { upsert: true, returnDocument: "after" }, // 🆕 Create it if it doesn't exist yet!
     );
 
-    // 🐙 6️⃣ Download all the TypeScript/JavaScript files from GitHub
-    console.log(`📥 Downloading files for ${repoId}...`);
-    const files = await fetchRepoFiles(repoUrl);
+    // 🐙 6️⃣ Download all files AND 🤖 Extract Tech Stack concurrently!
+    console.log(`📥 Downloading files & starting AI analysis for ${repoId}...`);
+    const [files, infrastructure] = await Promise.all([
+      fetchRepoFiles(repoUrl),
+      extractTechStack(owner, repo),
+    ]);
 
     // 🧠 7️⃣ Parse the code into an AST and wire up the imports (Edges)
     console.log(`🧠 Building AST Graph for ${repoId}...`);
@@ -94,23 +102,31 @@ export async function POST(request: Request) {
     console.log(`🕵️‍♂️ Running Static Analysis for ${repoId}...`);
     const issues = runStaticAnalysis(files);
 
+    // � Attach the repoId to all found issues so we know where they belong
+    const formattedIssues = issues.map((issue) => ({ ...issue, repoId }));
+
     // 💾 9️⃣ Clear old data just in case, then save all the new data to the database
     console.log(`💾 Saving graph data to database for ${repoId}...`);
     await Node.deleteMany({ repoId });
     await Edge.deleteMany({ repoId });
+    await Issue.deleteMany({ repoId });
 
     // 🧱 Insert everything in huge chunks (InsertMany is super fast!)
     if (nodes.length > 0) await Node.insertMany(nodes);
     if (edges.length > 0) await Edge.insertMany(edges);
+    if (formattedIssues.length > 0) await Issue.insertMany(formattedIssues);
 
-    // ✅ Update the repo status to show we finished successfully!
+    // ✅ Update the repo status to show we finished successfully, AND save the AI stack!
     await Repository.findOneAndUpdate(
       { repoId },
-      { status: "completed", analyzedAt: new Date() },
+      { status: "completed", analyzedAt: new Date(), infrastructure },
     );
 
     // 🎉 🔟 Return all the amazing data back to the user!
-    return NextResponse.json({ repoId, nodes, edges, issues }, { status: 200 });
+    return NextResponse.json(
+      { repoId, nodes, edges, issues: formattedIssues, infrastructure },
+      { status: 200 },
+    );
   } catch (error) {
     // 🚨 💥 Uh oh! Something crashed somewhere in the pipeline.
     console.error("💥 Pipeline Error:", error);
