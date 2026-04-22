@@ -7,7 +7,7 @@
  * 🚀 Super fast, strict types, and Next.js safe!
  */
 
-import { Project, SyntaxKind, SourceFile } from "ts-morph";
+import { Project, SyntaxKind, SourceFile, StringLiteral } from "ts-morph";
 import path from "path";
 
 // 📦 Shape of exactly what a Node (File) looks like
@@ -106,11 +106,32 @@ export async function buildGraph(
     });
 
     // 🔗 5️⃣ Dig out all the Import connections (Edges)
+    const rawImports: string[] = [];
+
+    // 📦 A: Get standard ES6 Imports (import { x } from './y')
     const importDeclarations = sourceFile.getImportDeclarations();
-
     for (const importDecl of importDeclarations) {
-      const importPath = importDecl.getModuleSpecifierValue();
+      rawImports.push(importDecl.getModuleSpecifierValue());
+    }
 
+    // 📦 B: Get old-school CommonJS Imports (require('./y'))
+    const callExpressions = sourceFile.getDescendantsOfKind(
+      SyntaxKind.CallExpression,
+    );
+    for (const callExpr of callExpressions) {
+      if (callExpr.getExpression().getText() === "require") {
+        const args = callExpr.getArguments();
+
+        // 🎯 Ensure it actually has a string argument!
+        if (args.length > 0 && args[0].getKind() === SyntaxKind.StringLiteral) {
+          const stringArg = args[0] as StringLiteral;
+          rawImports.push(stringArg.getLiteralValue());
+        }
+      }
+    }
+
+    // 🔄 Now process all imports and requires
+    for (const importPath of rawImports) {
       // 🛑 Ignore external imports (like 'react' or 'next')
       // Internal imports always start with '.' or '..' Wait, sometimes they start with '/'
       // We will only trace relative internal imports.
