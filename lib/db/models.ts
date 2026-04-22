@@ -1,3 +1,12 @@
+/**
+ * 📄 What this file does:
+ * 🏗️ Defines the blueprints (schemas) for the data we save in our database.
+ * 📦 Repository: Saves info about the code repositories we analyze.
+ * 📄 Node: Saves info about individual files in a repository.
+ * 🔗 Edge: Saves connections (how files import/export each other).
+ * 🚀 Uses strict types and keeps hot-reloading safe.
+ */
+
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 // 📦 Repository Types & Schema

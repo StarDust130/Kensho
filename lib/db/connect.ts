@@ -1,3 +1,10 @@
+/**
+ * 📄 What this file does:
+ * 🔌 Connects the Next.js app to the MongoDB database.
+ * 🧠 Caches the connection so saving files in dev mode doesn't crash the database!
+ * 🛡️ Makes sure the database URL is provided before starting.
+ */
+
 import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
