@@ -50,13 +50,15 @@ export async function fetchRepoFiles(repoUrl: string): Promise<RepoFile[]> {
   // 2️⃣ Try to get the file list (tree) from the 'main' branch first
   try {
     treeData = await getTree(owner, repo, "main");
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
     console.log("⚠️ Failed to fetch 'main' branch. Trying 'master' branch...");
     // 🔄 Fallback to 'master' if 'main' fails!
     try {
       treeData = await getTree(owner, repo, "master");
       branchUsed = "master"; // Update the branch we are actually using
-    } catch (masterError) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_masterError) {
       // 💥 Crash if both branches totally failed
       throw new Error(
         `🚨 Failed to fetch tree from both main and master branches!`,
@@ -68,7 +70,13 @@ export async function fetchRepoFiles(repoUrl: string): Promise<RepoFile[]> {
   const validExtensions = [".ts", ".tsx", ".js", ".jsx"];
   const badFolders = ["node_modules", "dist", ".next", "build"];
 
-  const filesToFetch = treeData.tree.filter((file: any) => {
+  // 📦 Define what a GitHub file object looks like
+  interface GitHubFile {
+    path: string;
+    type: string;
+  }
+
+  const filesToFetch = treeData.tree.filter((file: GitHubFile) => {
     // 🛑 We only want actual files ("blob"), not folders ("tree")
     if (file.type !== "blob") return false;
 
@@ -88,7 +96,7 @@ export async function fetchRepoFiles(repoUrl: string): Promise<RepoFile[]> {
 
   // 4️⃣ Download the real code for all chosen files at the exact same time
   try {
-    const filePromises = filesToFetch.map(async (file: any) => {
+    const filePromises = filesToFetch.map(async (file: GitHubFile) => {
       // 🔗 Build the raw URL to download the actual text of the file
       const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branchUsed}/${file.path}`;
 
