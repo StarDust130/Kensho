@@ -4,14 +4,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight, GitBranch, Code2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardView from "./dashboard-view"; // We will create this
-import LoadingView from "./loading-view"; // We will create this
-
-// Keep our text messages consistent for the loader
-const loadingTexts = [
-  "Ingesting repository...",
-  "Building AST Map...",
-  "Extracting AI Tech Stack...",
-];
+import TerminalLoader from "./TerminalLoader"; // Our new Terminal Loader component
 
 export default function AppOrchestrator() {
   const [uiState, setUiState] = useState<
@@ -51,7 +44,7 @@ export default function AppOrchestrator() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ repoUrl: url }),
       });
 
       if (!response.ok) {
@@ -70,7 +63,7 @@ export default function AppOrchestrator() {
   };
 
   if (uiState === "loading") {
-    return <LoadingView loadingTexts={loadingTexts} />;
+    return <TerminalLoader />;
   }
 
   if (uiState === "success" && data) {
@@ -93,7 +86,7 @@ export default function AppOrchestrator() {
             className="mt-8 px-5 py-4 bg-red-50/90 backdrop-blur text-red-600 text-sm font-medium rounded-2xl border border-red-200/50 shadow-sm max-w-2xl w-full flex items-start gap-3 text-left"
           >
             <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
-            <p leading-relaxed>{error}</p>
+            <p className="leading-relaxed">{error}</p>
           </motion.div>
         )}
 
