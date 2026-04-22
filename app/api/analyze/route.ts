@@ -1,0 +1,136 @@
+/**
+ * 📄 What this file does:
+ * 🚪 Acts as the main door (API endpoint) for our code analyzer.
+ * 🌍 Takes a GitHub URL from the user.
+ * 🗄️ Checks the database first to see if we already did the hard work (Cache).
+ * 🏗️ If not, it downloads the code, builds the AST graph, and finds bad code smells!
+ * 💾 Saves everything to the database so it's super fast next time.
+ */
+
+import { NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/connect";
+import { Repository, Node, Edge } from "@/lib/db/models";
+import { fetchRepoFiles } from "@/lib/github/fetcher";
+import { buildGraph } from "@/lib/parser/ast";
+import { runStaticAnalysis } from "@/lib/analyzer/rules";
+
+/**
+ * 🚀 Handle POST requests to /api/analyze
+ * @param request The incoming HTTP request containing the repoUrl
+ */
+export async function POST(request: Request) {
+  let repoId = "";
+
+  try {
+    // 📨 1️⃣ Get the URL from the request body
+    const body = await request.json();
+    const { repoUrl } = body;
+
+    if (!repoUrl || typeof repoUrl !== "string") {
+      return NextResponse.json(
+        { error: "❌ Missing or invalid repoUrl" },
+        { status: 400 },
+      );
+    }
+
+    // 🔍 2️⃣ Check if the URL looks like a real GitHub link
+    const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    if (!match) {
+      return NextResponse.json(
+        {
+          error:
+            "❌ Invalid GitHub URL! Must be formatted like: https://github.com/owner/repo",
+        },
+        { status: 400 },
+      );
+    }
+
+    const owner = match[1];
+    const repo = match[2].replace(".git", "");
+    repoId = `${owner}/${repo}`; // 🏷️ Make a unique ID out of it!
+
+    // 🔌 3️⃣ Connect to our MongoDB database
+    await connectDB();
+
+    // 🗄️ 4️⃣ Check if we already analyzed this exact repo (Caching)
+    const existingRepo = await Repository.findOne({ repoId });
+
+    if (existingRepo && existingRepo.status === "completed") {
+      console.log(`⚡ Cache Hit! Found existing data for ${repoId}`);
+
+      // 📥 Grab all the saved Nodes (files) and Edges (imports)
+      const nodes = await Node.find({ repoId }).lean();
+      const edges = await Edge.find({ repoId }).lean();
+
+      // 🎉 Return the cached data instantly!
+      return NextResponse.json(
+        {
+          repoId,
+          nodes,
+          edges,
+          // 🛑 We don't save issues to DB right now, so we return an empty list when cached
+          issues: [],
+        },
+        { status: 200 },
+      );
+    }
+
+    // 🏗️ 5️⃣ If it's new, tell the database we are working on it right now
+    await Repository.findOneAndUpdate(
+      { repoId },
+      { status: "analyzing" },
+      { upsert: true, new: true }, // 🆕 Create it if it doesn't exist yet!
+    );
+
+    // 🐙 6️⃣ Download all the TypeScript/JavaScript files from GitHub
+    console.log(`📥 Downloading files for ${repoId}...`);
+    const files = await fetchRepoFiles(repoUrl);
+
+    // 🧠 7️⃣ Parse the code into an AST and wire up the imports (Edges)
+    console.log(`🧠 Building AST Graph for ${repoId}...`);
+    const { nodes, edges } = await buildGraph(files, repoId);
+
+    // 🕵️‍♂️ 8️⃣ Scan the files for code smells and bad practices
+    console.log(`🕵️‍♂️ Running Static Analysis for ${repoId}...`);
+    const issues = runStaticAnalysis(files);
+
+    // 💾 9️⃣ Clear old data just in case, then save all the new data to the database
+    console.log(`💾 Saving graph data to database for ${repoId}...`);
+    await Node.deleteMany({ repoId });
+    await Edge.deleteMany({ repoId });
+
+    // 🧱 Insert everything in huge chunks (InsertMany is super fast!)
+    if (nodes.length > 0) await Node.insertMany(nodes);
+    if (edges.length > 0) await Edge.insertMany(edges);
+
+    // ✅ Update the repo status to show we finished successfully!
+    await Repository.findOneAndUpdate(
+      { repoId },
+      { status: "completed", analyzedAt: new Date() },
+    );
+
+    // 🎉 🔟 Return all the amazing data back to the user!
+    return NextResponse.json({ repoId, nodes, edges, issues }, { status: 200 });
+  } catch (error) {
+    // 🚨 💥 Uh oh! Something crashed somewhere in the pipeline.
+    console.error("💥 Pipeline Error:", error);
+
+    // 🛑 Update the DB to record the failure so it doesn't get stuck forever
+    if (repoId) {
+      try {
+        await connectDB();
+        await Repository.findOneAndUpdate({ repoId }, { status: "failed" });
+      } catch (dbError) {
+        console.error("🚨 Failed to update Repo status to 'failed':", dbError);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error: "🚨 Internal Server Error",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
+  }
+}
