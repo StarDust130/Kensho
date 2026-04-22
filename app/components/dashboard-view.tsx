@@ -1,6 +1,7 @@
 "use client";
 
 import { GitBranch, AlertTriangle } from "lucide-react";
+import CodeGraph from "./CodeGraph";
 
 export default function DashboardView({
   data,
@@ -21,14 +22,11 @@ export default function DashboardView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        {/* Box 1: React Flow Map placeholder */}
-        <div className="bg-white border border-slate-200/60 shadow-sm rounded-3xl p-6 col-span-1 lg:col-span-2 row-span-2 flex flex-col items-center justify-center min-h-[420px] text-slate-400/80">
-          <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
-            <GitBranch className="w-8 h-8" strokeWidth={1.5} />
+        {/* Box 1: React Flow Map */}
+        <div className="bg-white border border-slate-200/60 shadow-sm rounded-3xl p-4 md:p-6 col-span-1 lg:col-span-2 row-span-2 flex flex-col items-center justify-center min-h-[420px] text-slate-400/80">
+          <div className="w-full h-[500px] md:h-[700px]">
+            <CodeGraph nodes={data.nodes} edges={data.edges} />
           </div>
-          <p className="font-semibold text-lg tracking-tight">
-            React Flow Map rendering here next...
-          </p>
         </div>
 
         {/* Box 2: Infrastructure / Tech Stack */}
