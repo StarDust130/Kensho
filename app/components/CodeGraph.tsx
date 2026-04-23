@@ -26,6 +26,8 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 200;
 const nodeHeight = 50;
 
+const FIT_VIEW_OPTIONS = { padding: 0.2 };
+
 const getLayoutedElements = (initialNodes: any[], initialEdges: any[]) => {
   dagreGraph.setGraph({ rankdir: "LR" });
 
@@ -66,13 +68,14 @@ export default function CodeGraph({ nodes, edges }: CodeGraphProps) {
       data: { label: node.fileName },
       position: { x: 0, y: 0 },
       style: {
-        background: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: "8px",
-        padding: "10px",
-        color: "#0f172a",
-        fontWeight: 500,
-        fontSize: "14px",
+        background: "#0f172a",
+        border: "1px solid #1e293b",
+        borderRadius: "12px",
+        padding: "12px 16px",
+        color: "#f8fafc",
+        fontWeight: 600,
+        fontSize: "13px",
+        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
       },
     }));
 
@@ -82,28 +85,28 @@ export default function CodeGraph({ nodes, edges }: CodeGraphProps) {
       source: edge.source,
       target: edge.target,
       animated: true,
-      style: { stroke: "#94a3b8", strokeWidth: 2 },
+      style: { stroke: "#334155", strokeWidth: 2 },
     }));
 
     return getLayoutedElements(initialNodes, initialEdges);
   }, [nodes, edges]);
 
   return (
-    <div className="w-full h-full min-h-[500px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50 relative">
+    <div className="w-full h-full min-h-[500px] rounded-2xl overflow-hidden bg-[#020617] relative border border-white/5">
       <ReactFlow
         nodes={layoutedNodes}
         edges={layoutedEdges}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         minZoom={0.1}
         className="w-full h-full"
       >
-        <Background color="#ccc" gap={16} />
-        <Controls />
-        <MiniMap
-          nodeColor="#e2e8f0"
-          maskColor="rgba(248, 250, 252, 0.7)"
-          className="border border-slate-200 rounded shadow-sm"
+        <Background color="#1e293b" gap={16} />
+        <Controls className="fill-white bg-slate-900 border-white/10" />
+        <MiniMap 
+          nodeColor="#1e293b"
+          maskColor="rgba(2, 6, 23, 0.8)"
+          className="border border-white/10 rounded-[12px] bg-[#0f172a]"
         />
       </ReactFlow>
     </div>

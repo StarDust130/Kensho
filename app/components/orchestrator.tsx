@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { ArrowRight, GitBranch, Code2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import DashboardView from "./dashboard-view"; // We will create this
-import TerminalLoader from "./TerminalLoader"; // Our new Terminal Loader component
+import { useRouter } from "next/navigation";
+import TerminalLoader from "./TerminalLoader";
 
 export default function AppOrchestrator() {
+  const router = useRouter();
   const [uiState, setUiState] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -55,19 +56,16 @@ export default function AppOrchestrator() {
 
       const result = await response.json();
       setData(result);
-      setUiState("success");
+      sessionStorage.setItem("kenshoAnalysis", JSON.stringify(result));
+      router.push("/report");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred parsing the repo.");
       setUiState("error");
     }
   };
 
-  if (uiState === "loading") {
+  if (uiState === "loading" || uiState === "success") {
     return <TerminalLoader />;
-  }
-
-  if (uiState === "success" && data) {
-    return <DashboardView data={data} repoId={data.repoId} />;
   }
 
   // IDLE & ERROR VIEW
