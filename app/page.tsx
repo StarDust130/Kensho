@@ -26,7 +26,6 @@ export default function Home() {
 
   return (
     <main className="font-sans min-h-screen relative overflow-x-hidden bg-slate-100">
-      
       <div className="relative min-h-[95vh] flex flex-col w-full">
         {/* Animated Background Container */}
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -43,6 +42,28 @@ export default function Home() {
           </AnimatePresence>
           {/* Aesthetic Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/10 to-slate-100 pointer-events-none" />
+          <motion.div
+            initial={{ opacity: 0.2, scale: 0.95 }}
+            animate={{ opacity: 0.35, scale: 1.05 }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              repeatType: "mirror",
+              ease: "easeInOut",
+            }}
+            className="absolute -top-16 -left-20 w-72 h-72 rounded-full bg-gradient-to-br from-cyan-300/25 to-blue-500/5 blur-3xl pointer-events-none"
+          />
+          <motion.div
+            initial={{ opacity: 0.15, scale: 1.05 }}
+            animate={{ opacity: 0.3, scale: 0.95 }}
+            transition={{
+              duration: 9,
+              repeat: Infinity,
+              repeatType: "mirror",
+              ease: "easeInOut",
+            }}
+            className="absolute -bottom-20 -right-16 w-80 h-80 rounded-full bg-gradient-to-tr from-emerald-400/20 to-sky-500/5 blur-3xl pointer-events-none"
+          />
         </div>
 
         {/* Foreground wrapper */}
@@ -58,7 +79,10 @@ export default function Home() {
 
       <Features />
 
-      <section id="who-created-it" className="py-24 px-6 bg-slate-900 text-white text-center">
+      <section
+        id="who-created-it"
+        className="py-24 px-6 bg-slate-900 text-white text-center"
+      >
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">
             Meet the Creator
