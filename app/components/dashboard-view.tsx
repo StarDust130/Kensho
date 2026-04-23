@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Layers,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import CodeGraph from "./CodeGraph";
 
 export default function DashboardView({
@@ -21,6 +22,13 @@ export default function DashboardView({
   repoId: string;
   onBack?: () => void;
 }) {
+  const fadeUp = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, margin: "-80px" },
+    transition: { duration: 0.45, ease: "easeOut" as const },
+  };
+
   return (
     <div className="w-full relative z-10 font-sans pb-24">
       {/* Background Base */}
@@ -53,9 +61,12 @@ export default function DashboardView({
         </div>
 
         {/* Bento Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 w-full">
           {/* Box 1: React Flow Map */}
-          <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-3 md:p-5 lg:col-span-8 row-span-2 min-h-[550px] flex flex-col relative group overflow-hidden">
+          <motion.div
+            {...fadeUp}
+            className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-3 md:p-5 lg:col-span-8 row-span-2 min-h-[420px] md:min-h-[550px] flex flex-col relative group overflow-hidden"
+          >
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-purple-500/5 opacity-50 pointer-events-none" />
             <div className="p-3 flex items-center gap-3 text-white font-bold text-lg z-10">
               <p>Architecture Map</p>
@@ -63,13 +74,21 @@ export default function DashboardView({
                 AST INTERACTIVE
               </span>
             </div>
-            <div className="w-full flex-1 rounded-[1.25rem] overflow-hidden mt-1 z-10 relative border border-white/5 shadow-inner">
+            <div className="w-full flex-1 min-h-[320px] md:min-h-[560px] rounded-[1.25rem] overflow-hidden mt-1 z-10 relative border border-white/5 shadow-inner">
               <CodeGraph nodes={data.nodes} edges={data.edges} />
             </div>
-          </div>
+          </motion.div>
 
           {/* Box 2: Infrastructure / Tech Stack */}
-          <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-xl rounded-3xl p-6 md:p-8 lg:col-span-4 relative overflow-hidden">
+          <motion.div
+            {...fadeUp}
+            transition={{
+              duration: 0.45,
+              ease: "easeOut" as const,
+              delay: 0.05,
+            }}
+            className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-xl rounded-3xl p-5 md:p-8 lg:col-span-4 relative overflow-hidden"
+          >
             <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-blue-500/10 blur-[60px] pointer-events-none" />
             <h2 className="text-[20px] font-extrabold tracking-tight mb-6 text-white flex items-center gap-2">
               <Server className="w-5 h-5 text-blue-400" />
@@ -99,17 +118,25 @@ export default function DashboardView({
                 },
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Box 3: Metrics */}
-          <div className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-xl rounded-3xl p-6 md:p-8 lg:col-span-4 relative overflow-hidden flex flex-col justify-center">
+          <motion.div
+            {...fadeUp}
+            transition={{
+              duration: 0.45,
+              ease: "easeOut" as const,
+              delay: 0.1,
+            }}
+            className="bg-[#111111]/80 backdrop-blur-xl border border-white/10 shadow-xl rounded-3xl p-5 md:p-8 lg:col-span-4 relative overflow-hidden flex flex-col justify-center"
+          >
             <div className="absolute bottom-[-50px] left-[-50px] w-48 h-48 bg-purple-500/10 blur-[60px] pointer-events-none" />
             <h2 className="text-[20px] font-extrabold tracking-tight mb-6 text-white flex items-center gap-2">
               <Activity className="w-5 h-5 text-purple-400" />
               Repository Scale
             </h2>
             <div className="grid grid-cols-2 gap-4 relative z-10">
-              <div className="p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+              <div className="p-4 md:p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
                   Parsed Files
                 </p>
@@ -117,7 +144,7 @@ export default function DashboardView({
                   {data.nodes?.length || 0}
                 </p>
               </div>
-              <div className="p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+              <div className="p-4 md:p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
                   Graph Edges
                 </p>
@@ -126,10 +153,18 @@ export default function DashboardView({
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Box 4: Risk Scanner */}
-          <div className="bg-[#111111]/80 backdrop-blur-xl border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.06)] rounded-3xl p-6 md:p-8 lg:col-span-12 relative overflow-hidden transition-all hover:shadow-[0_0_60px_rgba(239,68,68,0.1)]">
+          <motion.div
+            {...fadeUp}
+            transition={{
+              duration: 0.45,
+              ease: "easeOut" as const,
+              delay: 0.15,
+            }}
+            className="bg-[#111111]/80 backdrop-blur-xl border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.06)] rounded-3xl p-5 md:p-8 lg:col-span-12 relative overflow-hidden transition-all hover:shadow-[0_0_60px_rgba(239,68,68,0.1)]"
+          >
             <div className="absolute top-0 right-0 w-full h-64 bg-gradient-to-b from-red-500/5 to-transparent pointer-events-none" />
             <h2 className="text-[24px] font-extrabold tracking-tight mb-6 flex items-center gap-3 text-white relative z-10">
               <div className="w-11 h-11 rounded-[14px] bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.15)]">
@@ -138,7 +173,7 @@ export default function DashboardView({
               Risk & Threat Scanner
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-10 mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 relative z-10 mt-6 md:mt-8">
               {data.issues?.length > 0 ? (
                 data.issues.map((issue: any, i: number) => (
                   <div
@@ -193,7 +228,7 @@ export default function DashboardView({
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
