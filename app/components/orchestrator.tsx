@@ -6,6 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import TerminalLoader from "./TerminalLoader";
 
+type RecentRepo = {
+  url: string;
+  repoId: string;
+  savedAt: string;
+};
+
 export default function AppOrchestrator() {
   const router = useRouter();
   const [uiState, setUiState] = useState<
@@ -14,6 +20,18 @@ export default function AppOrchestrator() {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
+  const [recentRepos, setRecentRepos] = useState<RecentRepo[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("kenshoRecentRepos");
+    if (!saved) return;
+
+    try {
+      setRecentRepos(JSON.parse(saved));
+    } catch {
+      setRecentRepos([]);
+    }
+  }, []);
 
   const validateGithubUrl = (input: string) => {
     try {
@@ -26,11 +44,29 @@ export default function AppOrchestrator() {
     }
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) return;
+  const saveResult = (inputUrl: string, result: any) => {
+    const repoMeta: RecentRepo = {
+      url: inputUrl,
+      repoId: result.repoId,
+      savedAt: new Date().toISOString(),
+    };
 
-    if (!validateGithubUrl(url)) {
+    const currentList = recentRepos.filter((item) => item.url !== inputUrl);
+    const nextList = [repoMeta, ...currentList].slice(0, 6);
+
+    setRecentRepos(nextList);
+    localStorage.setItem("kenshoRecentRepos", JSON.stringify(nextList));
+
+    const byUrlRaw = localStorage.getItem("kenshoAnalysisByUrl");
+    const byUrl = byUrlRaw ? JSON.parse(byUrlRaw) : {};
+    byUrl[inputUrl] = result;
+    localStorage.setItem("kenshoAnalysisByUrl", JSON.stringify(byUrl));
+  };
+
+  const runAnalysis = async (inputUrl: string) => {
+    if (!inputUrl.trim()) return;
+
+    if (!validateGithubUrl(inputUrl)) {
       setError(
         "Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo).",
       );
@@ -45,7 +81,7 @@ export default function AppOrchestrator() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl: url }),
+        body: JSON.stringify({ repoUrl: inputUrl }),
       });
 
       if (!response.ok) {
@@ -56,12 +92,42 @@ export default function AppOrchestrator() {
 
       const result = await response.json();
       setData(result);
+      saveResult(inputUrl, result);
       sessionStorage.setItem("kenshoAnalysis", JSON.stringify(result));
       router.push("/report");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred parsing the repo.");
       setUiState("error");
     }
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runAnalysis(url);
+  };
+
+  const openRecent = async (recentUrl: string) => {
+    setUrl(recentUrl);
+    setError(null);
+
+    const byUrlRaw = localStorage.getItem("kenshoAnalysisByUrl");
+    if (byUrlRaw) {
+      try {
+        const byUrl = JSON.parse(byUrlRaw);
+        if (byUrl[recentUrl]) {
+          sessionStorage.setItem(
+            "kenshoAnalysis",
+            JSON.stringify(byUrl[recentUrl]),
+          );
+          router.push("/report");
+          return;
+        }
+      } catch {
+        // Fall through to fresh analysis.
+      }
+    }
+
+    await runAnalysis(recentUrl);
   };
 
   if (uiState === "loading" || uiState === "success") {
@@ -172,6 +238,39 @@ export default function AppOrchestrator() {
             </div>
           </div>
         </motion.form>
+
+        {recentRepos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="w-full max-w-[850px] mt-5"
+          >
+            <p className="text-left text-[11px] sm:text-xs font-bold tracking-[0.18em] text-slate-500 uppercase px-1 mb-2">
+              Recent Repositories
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {recentRepos.map((repo, index) => (
+                <motion.button
+                  key={repo.url}
+                  type="button"
+                  onClick={() => openRecent(repo.url)}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.35 }}
+                  className="text-left rounded-xl border border-slate-200 bg-white/90 hover:bg-white px-3.5 py-3 shadow-sm hover:shadow-md transition-all duration-300"
+                >
+                  <p className="text-[13px] font-bold text-slate-800 truncate">
+                    {repo.repoId}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                    {repo.url}
+                  </p>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </>
   );
