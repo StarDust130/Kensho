@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useMemo } from "react";
-import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Handle,
+  Position,
+  type NodeProps,
+} from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
 
@@ -27,6 +34,30 @@ const nodeWidth = 200;
 const nodeHeight = 50;
 
 const FIT_VIEW_OPTIONS = { padding: 0.2 };
+
+function GlassNode({ data }: NodeProps<{ label: string }>) {
+  return (
+    <div className="min-w-[180px] rounded-xl border border-cyan-400/20 bg-slate-900/95 px-3 py-2 shadow-[0_0_20px_rgba(34,211,238,0.12)] backdrop-blur-md">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-cyan-300 !w-2.5 !h-2.5"
+      />
+      <p className="text-[12px] font-semibold text-slate-100 truncate">
+        {data.label}
+      </p>
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-cyan-300 !w-2.5 !h-2.5"
+      />
+    </div>
+  );
+}
+
+const NODE_TYPES = {
+  glass: GlassNode,
+};
 
 const getLayoutedElements = (initialNodes: any[], initialEdges: any[]) => {
   dagreGraph.setGraph({ rankdir: "LR" });
@@ -65,17 +96,18 @@ export default function CodeGraph({ nodes, edges }: CodeGraphProps) {
     // Map backend nodes
     const initialNodes = nodes.map((node) => ({
       id: node.filePath,
+      type: "glass",
       data: { label: node.fileName },
       position: { x: 0, y: 0 },
       style: {
-        background: "#0f172a",
-        border: "1px solid #1e293b",
+        background: "transparent",
+        border: "none",
         borderRadius: "12px",
-        padding: "12px 16px",
+        padding: 0,
         color: "#f8fafc",
         fontWeight: 600,
         fontSize: "13px",
-        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        boxShadow: "none",
       },
     }));
 
@@ -96,14 +128,17 @@ export default function CodeGraph({ nodes, edges }: CodeGraphProps) {
       <ReactFlow
         nodes={layoutedNodes}
         edges={layoutedEdges}
+        nodeTypes={NODE_TYPES}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}
         minZoom={0.1}
+        maxZoom={1.8}
+        proOptions={{ hideAttribution: true }}
         className="w-full h-full"
       >
         <Background color="#1e293b" gap={16} />
         <Controls className="fill-white bg-slate-900 border-white/10" />
-        <MiniMap 
+        <MiniMap
           nodeColor="#1e293b"
           maskColor="rgba(2, 6, 23, 0.8)"
           className="border border-white/10 rounded-[12px] bg-[#0f172a]"
